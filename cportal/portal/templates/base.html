@@ -1,0 +1,34 @@
+<html>
+	<head>
+		<title>{% block title %}Untitled{% endblock %}</title>
+		<style>
+			body {
+				background: white;
+				font-family: Verdana, Tahoma;
+				font-size: 10pt;
+			}
+			#titlebar {
+				font-size: 20pt;
+				padding: 3px;
+				background: silver;
+			}
+			#content {
+				padding-left: 10pt;
+				padding-right: 10pt;
+				padding-top: 5pt;
+				padding-bottom: 5pt;
+			}
+		</style>
+		<style>
+			{% block style %}{% endblock %}</title>
+		</style>
+	</head>
+	<body>
+		<div id="content">
+		{% block body %}
+		{% endblock %}
+		</div>
+	</body>
+</html>
+
+

@@ -4,6 +4,6 @@ from portal.models import *
 admin.site.register(Package)
 admin.site.register(Service)
 admin.site.register(Deployment)
-admin.site.register(DeploymentPackage)
-admin.site.register(DeploymentPackageService)
+admin.site.register(DeployedPackage)
+admin.site.register(DeployedPackageService)
 
