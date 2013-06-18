@@ -3,6 +3,7 @@ from django.http import Http404
 from django.http import HttpResponse
 from django.template import Context, loader
 from django.shortcuts import render
+from portal.models import *
 
 import paramiko
 
@@ -17,5 +18,13 @@ def index(request):
     client.close()
 
     data = { "out" : out }
+
+    data["packages"] = Package.objects.order_by("name")
+
+
     return render(request, 'portal/index.html', data)
+
+def launch(request):
+    return render(request, 'launch.html')
+
 

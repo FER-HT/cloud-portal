@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Index{% endblock %}
+{% block body %}
+<h1 class="title">Self-service portal demo</h1>
+
+<form action="{% url "portal:launch" %}" method="POST">
+<table border="0">
+	{% for p in packages %}
+	<tr><td>{{ p.name }}</td><td><input type="submit" value="{{ p.pk }}" value="Launch package"></td></tr>
+	{% endfor %}
+</table>
+</form>
+
+<pre>
+{{ out }}
+</pre>
+
+{% endblock %}
+
