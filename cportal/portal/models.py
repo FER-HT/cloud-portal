@@ -22,18 +22,12 @@ class Service(models.Model):
     def __unicode__(self):
         return self.name
 
-class Deployment(models.Model):
-    name = models.CharField(max_length=200)
-
-    def __unicode__(self):
-        return self.name
-
 class DeployedPackage(models.Model):
-    deployment = models.ForeignKey(Deployment)
     package = models.ForeignKey(Package)
+    ctime = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "%s on %s" % (self.package.name, self.deployment.name)
+        return "%s @ %s" % (self.package.name, self.ctime)
 
 class DeployedPackageService(models.Model):
     STATE_NEW = 0
@@ -51,7 +45,7 @@ class DeployedPackageService(models.Model):
     service = models.ForeignKey(Service)
     cloud_init = models.TextField()
     address = models.CharField(max_length=100)
-    state = models.PositiveIntegerField(choices = STATE_CHOICES, default = STATE_CHOICES)
+    state = models.PositiveIntegerField(choices = STATE_CHOICES, default = STATE_NEW)
 
     def __unicode__(self):
-        return "%s on %s on %s" % (self.service.name, self.deployment_package.package.name, self.deployment_package.deployment.name)
+        return "%s on %s @ %s" % (self.service.name, self.deployed_package.package.name, self.deployed_package.ctime)

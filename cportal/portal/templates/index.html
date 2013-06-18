@@ -4,9 +4,11 @@
 <h1 class="title">Self-service portal demo</h1>
 
 <form action="{% url "portal:launch" %}" method="POST">
+{% csrf_token %}
+<p>Available packages:</p>
 <table border="0">
 	{% for p in packages %}
-	<tr><td>{{ p.name }}</td><td><input type="submit" value="{{ p.pk }}" value="Launch package"></td></tr>
+	<tr><td title="{{ p.service_set.all|escape }}">{{ p.name }}</td><td><button type="submit" name="package_id" value="{{ p.pk }}">Launch package</button></td></tr>
 	{% endfor %}
 </table>
 </form>
