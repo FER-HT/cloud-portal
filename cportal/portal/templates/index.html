@@ -5,7 +5,7 @@
 
 <form action="{% url "portal:launch" %}" method="POST">
 {% csrf_token %}
-<p>Available packages:</p>
+<h2 class="section">Available packages</h2>
 <table border="0">
 	{% for p in packages %}
 	<tr><td title="{{ p.service_set.all|escape }}">{{ p.name }}</td><td><button type="submit" name="package_id" value="{{ p.pk }}">Launch package</button></td></tr>
@@ -13,7 +13,37 @@
 </table>
 </form>
 
-<pre>
+<h2 class="section">Deployed packages</h2>
+
+<form action="{% url "portal:checkrun" %}" method="POST">
+{% csrf_token %}
+<table border="0">
+	{% for dp in deployed_packages %}
+	<tr>
+		<td title="{{ dp.ctime }}" align="center">
+			❖ {{ dp.package.name }}<br>
+			<button type="submit" name="dp_id" value="{{ dp.pk }}">Check and run</button>
+		</td>
+		<td>
+			<ul>
+				{% for dps in dp.deployedpackageservice_set.all %}
+				<li>{{ dps.service.name }} (<span title="Last checked: {{ dps.last_check_time }}">{{ dps.get_state_display }}</span>)</li>
+				{% endfor %}
+			</ul>
+		</td>
+	</tr>
+	{% endfor %}
+</table>
+</form>
+
+<h2 class="section">Host stats</h2>
+<p>Active machines:</p>
+<ul>
+{% for m in machines %}
+	<li><tt class="tiny_output">{{ m.guid }} : {{ m.name }} [{{ m.status }}] - {{ m.networks }}</tt></li>
+{% endfor %}
+</ul>
+<pre class="tiny_output">
 {{ out }}
 </pre>
 

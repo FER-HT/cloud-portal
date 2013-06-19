@@ -15,6 +15,8 @@ class Service(models.Model):
     description = models.TextField()
     ident = models.CharField(max_length=64)
     cloud_init_template = models.TextField()
+    nova_flavor = models.CharField(max_length=64)
+    nova_image = models.CharField(max_length=64)
     order = models.PositiveIntegerField(default = 0)
     min_instances = models.PositiveIntegerField(default = 1)
     max_instances = models.PositiveIntegerField(default = 1)
@@ -44,8 +46,12 @@ class DeployedPackageService(models.Model):
     deployed_package = models.ForeignKey(DeployedPackage)
     service = models.ForeignKey(Service)
     cloud_init = models.TextField()
-    address = models.CharField(max_length=100)
     state = models.PositiveIntegerField(choices = STATE_CHOICES, default = STATE_NEW)
+    hostname = models.CharField(max_length=100)
+    last_check_time = models.DateTimeField(null=True, blank=True)
+    address = models.CharField(max_length=100, null=True, blank=True)
+    guid = models.CharField(max_length=64, null=True, blank=True)
+    props = models.TextField(null=True, blank=True)
 
     def __unicode__(self):
         return "%s on %s @ %s" % (self.service.name, self.deployed_package.package.name, self.deployed_package.ctime)

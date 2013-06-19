@@ -6,5 +6,6 @@ urlpatterns = patterns('',
     url(r'^$', views.index, name='index'),
 #    url(r'^/launch/(?P<package_id>\d+)$', views.launch, name='launch')
     url(r'^launch$', views.launch, name='launch'),     # POST URL
+    url(r'^checkrun$', views.checkrun, name='checkrun'),     # POST URL
 )
 

@@ -1,10 +1,20 @@
 {% extends "base.html" %}
 
 {% block body %}
-<pre>
-{{ package }}
-{{ services }}
-{{ deployed_package }}
-</pre>
+<h1 class="title">Launching packaged services</h1>
+
+<p>Launching <b>{{ package }}</b>, consisting of:</p>
+<ul>
+{% for s in services %}
+	<li>{{ s.name }}</li>
+{% endfor %}
+</ul>
+<p>Launched identifier: <b>{{ deployed_package }}</b>.</p>
+
+<form action="{% url "portal:checkrun" %}" method="POST">
+{% csrf_token %}
+<p><button type="submit" name="dp_id" value="{{ deployed_package.pk }}">Check and run the package</button></p>
+
+<p><a href="{% url "portal:index" %}">Return to start page</a>.</p>
 
 {% endblock %}
