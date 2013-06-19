@@ -20,9 +20,11 @@
 <table border="0">
 	{% for dp in deployed_packages %}
 	<tr>
-		<td title="{{ dp.ctime }}" align="center">
-			❖ {{ dp.package.name }}<br>
+		<td title="{{ dp.ctime }}">
+			<div>❖ {{ dp.package.name }}<br></div>
+			<div style="text-align: center">
 			<button type="submit" name="dp_id" value="{{ dp.pk }}">Check and run</button>
+			</div>
 		</td>
 		<td>
 			<ul>
