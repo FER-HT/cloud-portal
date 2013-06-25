@@ -14,6 +14,7 @@ def index(request):
     data = { "out" : out }
 
     data["machines"] = get_remote_running_machines()
+    data["managed_machines"] = DeployedPackageService.objects.all().values_list("guid", flat=True)
 
     data["packages"] = Package.objects.order_by("name")
     data["deployed_packages"] = DeployedPackage.objects.order_by("ctime")

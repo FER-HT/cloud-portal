@@ -43,7 +43,7 @@
 <p>Active machines:</p>
 <ul>
 {% for m in machines %}
-	<li><tt class="tiny_output">{{ m.guid }} : {{ m.name }} [{{ m.status }}] - {{ m.networks }}</tt></li>
+	<li><tt class="tiny_output">{% if m.guid in managed_machines %}<u>{{ m.guid }}</u>{% else %}{{ m.guid }}{% endif %} : {{ m.name }} [{{ m.status }}] - {{ m.networks }}</tt></li>
 {% endfor %}
 </ul>
 <pre class="tiny_output">
