@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Remove deployed package: {{ dp.package.name }}{% endblock %}
+
+{% block body %}
+<h1 class="title">Remove deployed package: {{ dp.package.name }}</h1>
+
+<p>Report for: <b>{{ dp }}</b>.</p>
+
+<ul>
+	{% for r in result %}
+	<li>{{ r.0.service.name }} : <span title="{{ r.0.guid }}">{{ r.0.hostname }} ({{ r.0.address }})</span> {% if r.1 == 1%}<b>removed</b>{% endif %}</li>
+	{% endfor %}
+</ul>
+
+<p><a href="{% url "portal:index" %}">Return to start page</a>.</p>
+
+{% endblock %}

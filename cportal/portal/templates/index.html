@@ -8,28 +8,29 @@
 <h2 class="section">Available packages</h2>
 <table border="0">
 	{% for p in packages %}
-	<tr><td title="{{ p.service_set.all|escape }}">{{ p.name }}</td><td><button type="submit" name="package_id" value="{{ p.pk }}">Launch package</button></td></tr>
+	<tr><td title="{{ p.service_set.all|escape }}">{{ p.name }}</td><td><button type="submit" name="package_id" value="{{ p.pk }}">Deploy package</button></td></tr>
 	{% endfor %}
 </table>
 </form>
 
 <h2 class="section">Deployed packages</h2>
 
-<form action="{% url "portal:checkrun" %}" method="POST">
+<form action="{% url "portal:dpsop" %}" method="POST">
 {% csrf_token %}
 <table border="0">
 	{% for dp in deployed_packages %}
 	<tr>
-		<td title="{{ dp.ctime }}">
-			<div>❖ {{ dp.package.name }}<br></div>
+		<td>
+			<div title="Deployed on: {{ dp.ctime }}">❖ {{ dp.package.name }}<br></div>
 			<div style="text-align: center">
 			<button type="submit" name="dp_id" value="{{ dp.pk }}">Check and run</button>
+			<button type="submit" name="rp_id" value="{{ dp.pk }}">Remove / delete</button>
 			</div>
 		</td>
 		<td>
 			<ul>
 				{% for dps in dp.deployedpackageservice_set.all %}
-				<li>{{ dps.service.name }} (<span title="Last checked: {{ dps.last_check_time }}">{{ dps.get_state_display }}</span>)</li>
+				<li><span title="{{ dps.guid }}">{{ dps.service.name }}</span> (<span title="Last checked: {{ dps.last_check_time }}">{{ dps.get_state_display }}</span>)</li>
 				{% endfor %}
 			</ul>
 		</td>

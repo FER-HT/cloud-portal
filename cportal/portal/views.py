@@ -51,6 +51,47 @@ def launch(request):
 
     return render(request, 'launch.html', data)
 
+
+def dpsop(request):
+    if 'dp_id' in request.POST:
+        return checkrun(request)
+    elif 'rp_id' in request.POST:
+        return remove(request)
+    else:
+        return HttpResponse("Unknown op")
+       
+
+def remove(request):
+    dp = DeployedPackage.objects.get(pk = int(request.POST['rp_id']))
+    data = { "dp" : dp }
+    result = []
+    machines = get_remote_running_machines()
+    for dps in dp.deployedpackageservice_set.order_by("-service__order"):
+        result.append((dps, do_remove(dps, machines)))
+    data["result"] = result
+    dp.delete()
+    return render(request, "remove.html", data)
+
+
+def do_remove(dps, machines = None):
+    if not machines:
+        machines = get_remote_running_machines()
+    res = 0
+    if dps.guid:
+        found_machine = None
+        for m in machines:
+            if m["guid"] == dps.guid:
+                found_machine = m
+                break
+        if found_machine:
+            do_remote_machine_delete(dps)
+            res = 1
+            dps.delete()
+        else:
+            dps.delete()
+    return res
+
+
 def checkrun(request):
     dp = DeployedPackage.objects.get(pk = int(request.POST['dp_id']))
     data = { "dp" : dp }
