@@ -122,19 +122,28 @@ def do_checkrun(dps, machines = None):
                 # The machine is in an invalid state, restart it
                 do_remote_machine_delete(dps)
                 dps.guid = do_remote_machine_start(dps)
-                msg = "Restarted; new GUID: %s" % dps.guid
+                if dps.guid != None:
+                    msg = "Restarted; new GUID: %s" % dps.guid
+                else:
+                    msg = "Error starting!"
             else:
                 dps.state = DeployedPackageService.STATE_RUNNING
                 msg = "Active"
         else:
             # The machine is registered in the database but not present on the host
             dps.guid = do_remote_machine_start(dps)
-            msg = "Missing; new GUID: %s" % dps.guid
+            if dps.guid != None:
+                msg = "Missing; new GUID: %s" % dps.guid
+            else:
+                msg = "Error starting!"
     else:
         # Apparently, the machine was never started before. Start it now.
         dps.guid = do_remote_machine_start(dps)
-        dps.sate = DeployedPackageService.STATE_RUNNING
-        msg = "Started; new GUID: %s" % dps.guid
+        if dps.guid != None:
+            dps.state = DeployedPackageService.STATE_RUNNING
+            msg = "Started; new GUID: %s" % dps.guid
+        else:
+            msg = "Error starting!"
     dps.save()
     return msg
 
@@ -156,13 +165,14 @@ def do_remote_machine_start(dps):
     cmd = "boot --flavor %s --image %s --user_data %s --key_name portal %s" % (dps.service.nova_flavor, dps.service.nova_image, cifn, dps.hostname)
     out, err = remote_exec_nova(cmd)
     print cmd
-    print out
-    print err
     # 3) Parse the result
     props = {}
     for prop in re_nova_boot.findall(out):
         props[prop[0]] = prop[1]
     print props
+    if len(props) == 0:
+        print "Error starting machine: %s / %s" % (out, err)
+        return None
     dps.props = repr(props)
     dps.guid = props['id']
     dps.save()
@@ -191,7 +201,7 @@ def parse_networks(s):
 def remote_exec(cmd, indata=None):
     client = paramiko.SSHClient()
     client.load_system_host_keys()
-    client.set_missing_host_key_policy(paramiko.WarningPolicy())
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect("chefnode4", 22, "puser", "puser22")
 
     stdin, stdout, stderr = client.exec_command(cmd)

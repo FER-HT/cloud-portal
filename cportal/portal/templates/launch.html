@@ -11,7 +11,7 @@
 </ul>
 <p>Launched identifier: <b>{{ deployed_package }}</b>.</p>
 
-<form action="{% url "portal:checkrun" %}" method="POST">
+<form action="{% url "portal:dpsop" %}" method="POST">
 {% csrf_token %}
 <p><button type="submit" name="dp_id" value="{{ deployed_package.pk }}">Check and run the package</button></p>
 
