@@ -86,9 +86,9 @@ def build_dp_variables(dp):
         # 2nd pass: pull in all Chef's attributes from the "default"
         # and the "normal" keys of "knife node show -l"
         try:
-            attrs = json.loads(exec_knife("show -l -F json %s" % node_name))
-            flatten_dict(v, attrs["default"])
-            flatten_dict(v, attrs["normal"])
+            attrs = json.loads(exec_knife("node show -l -F json %s" % dps.hostname))
+            flatten_dict(dps.service.ident, v, attrs[u"default"])
+            flatten_dict(dps.service.ident, v, attrs[u"normal"])
         except:
             pass
     return v
@@ -102,7 +102,7 @@ def flatten_dict(base, v, d):
     if base != '':
         base = base + "."
     for k in d:
-        if type(d[k]) in (type('a'), type(u'a'), 1, 1.1, False):
+        if type(d[k]) in (type('a'), type(u'a'), type(1), type(1.1), type(False), type(None)):
             v[base + k] = d[k]
         elif type(d[k]) in (type([]), type((1,2))):
             v[base + k] = ", ".join(d[k])
@@ -296,6 +296,5 @@ def remote_exec_nova(params):
 
 # Execute "knife"
 def exec_knife(cmd, indata=None):
-    ret = subprocess.check_output("knife %s" % cmd, shell=True)
-    return ret
+    return subprocess.check_output("knife %s" % cmd, shell=True, stderr=subprocess.STDOUT)
 
