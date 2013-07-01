@@ -49,7 +49,7 @@ class DeployedPackageService(models.Model):
     state = models.PositiveIntegerField(choices = STATE_CHOICES, default = STATE_NEW)
     hostname = models.CharField(max_length=100)
     last_check_time = models.DateTimeField(null=True, blank=True)
-    address = models.CharField(max_length=100, null=True, blank=True)
+    address = models.CharField(max_length=1000, null=True, blank=True)
     guid = models.CharField(max_length=64, null=True, blank=True)
     props = models.TextField(null=True, blank=True)
 
