@@ -8,7 +8,14 @@ class DeployedPackageServiceInline(admin.StackedInline):
 class DeployedPackageAdmin(admin.ModelAdmin):
     inlines = [DeployedPackageServiceInline]
 
-admin.site.register(Package)
+class PackageServiceInline(admin.StackedInline):
+    model = Service
+    extra = 1
+
+class PackageAdmin(admin.ModelAdmin):
+    inlines = [PackageServiceInline]
+
+admin.site.register(Package, PackageAdmin)
 admin.site.register(Service)
 admin.site.register(DeployedPackage, DeployedPackageAdmin)
 admin.site.register(DeployedPackageService)

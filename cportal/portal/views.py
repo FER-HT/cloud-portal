@@ -19,7 +19,7 @@ def index(request):
     data["packages"] = Package.objects.order_by("name")
     data["deployed_packages"] = DeployedPackage.objects.order_by("ctime")
 
-    sync_dps_with_machines(data["deployed_packages"], data["machines"])
+    sync_dp_with_machines(data["deployed_packages"], data["machines"])
 
     for dp in data["deployed_packages"]:
         print repr(build_dp_variables(dp))
@@ -39,19 +39,20 @@ def launch(request):
     uniq = int(time.time()) % 10000
     count = 1
     for s in services:
-        hostname = "%s-%d-%d" % (s.ident, uniq, count)
-        count += 1
-        tpl = Template(s.cloud_init_template)
-        ctx = Context({
-            "name" : s.name,
-            "ident" : s.ident,
-            "state" : DeployedPackageService.STATE_NEW,
-            "package" : package,
-            "deployed_package" : dp
-        })
-        cloud_init = tpl.render(ctx)
-        dps = dp.deployedpackageservice_set.create(service=s, cloud_init=cloud_init, hostname=hostname)
-        dps.save()
+        for x in range(s.max_instances):
+            hostname = "%s-%d-%d" % (s.ident, uniq, count)
+            count += 1
+            tpl = Template(s.cloud_init_template)
+            ctx = Context({
+                "name" : s.name,
+                "ident" : s.ident,
+                "state" : DeployedPackageService.STATE_NEW,
+                "package" : package,
+                "deployed_package" : dp
+            })
+            cloud_init = tpl.render(ctx)
+            dps = dp.deployedpackageservice_set.create(service=s, cloud_init=cloud_init, hostname=hostname)
+            dps.save()
 
     data["deployed_package"] = dp
 
@@ -143,19 +144,90 @@ def do_remove(dps, machines = None):
     return res
 
 
-def checkrun(request):
-    dp = DeployedPackage.objects.get(pk = int(request.POST['dp_id']))
+def checkrun(request, dp_id=None):
+    if dp_id == None:
+        if 'dp_id' in request.POST:
+            dp = DeployedPackage.objects.get(pk = int(request.POST['dp_id']))
+        elif 'dp_id' in request.GET:
+            dp = DeployedPackage.objects.get(pk = int(request.GET['dp_id']))
+        else:
+            return HttpResponse("Unknown dp_id")
+    else:
+        dp = DeployedPackage.objects.get(pk = int(dp_id))
+
     data = { "dp" : dp }
-    result = []
     machines = get_remote_running_machines()
+    list_running = []
+    list_starting = []
+    list_new = []
     for dps in dp.deployedpackageservice_set.order_by("service__order"):
-        result.append((dps, do_checkrun(dps, machines)))
-    data["result"] = result
+        # This is a state machine, iterating towards the state where
+        # there are no machines in STATE_NEW or STATE_STARTING.
+        # A machine is booted with STATE_NEW.
+        # A machine transitions from STATE_NEW into STATE_STARTING when it gets an IP address.
+        # A machine transitions from STATE_STARTING into STATE_RUNNING when it is registered into Chef
+
+        found = None
+        for m in machines:
+            if m['guid'] == dps.guid:
+                found = m
+                break
+
+        if found and found['status'] == 'ERROR':
+            dps.state = DeployedPackageService.STATE_CRASHED
+            dps.save()
+            list_new.append((dps, do_checkrun(dps, machines, False)))
+            break
+
+        if dps.state == DeployedPackageService.STATE_NEW or not found:
+            list_new.append((dps, do_checkrun(dps, machines, False)))
+            machines = get_remote_running_machines()
+            for m in machines:
+                if m['guid'] == dps.guid:
+                    found = m
+                    break
+            if found and m['networks']:
+                dps.state = DeployedPackageService.STATE_STARTING
+                sync_dps_with_machine(dps, m)
+            break
+
+        if dps.state == DeployedPackageService.STATE_STARTING:
+            list_starting.append(dps)
+            if is_chef_machine_registered(dps.hostname):
+                dps.state = DeployedPackageService.STATE_RUNNING
+                dps.save()
+            break
+
+        if dps.state == DeployedPackageService.STATE_RUNNING:
+            list_running.append(dps)
+
+    data["list_running"] = list_running
+    data["list_starting"] = list_starting
+    data["list_new"] = list_new
     return render(request, "checkrun.html", data)
 
 
+def checkrun_is_active(dps, machines = None):
+    if not machines:
+        machines = get_remote_running_machines()
+    if dps.guid:
+        found = None
+        for m in machines:
+            if m["guid"] == dps.guid:
+                found = m
+                break
+        if found:
+            if found["status"] == "ACTIVE":
+                return True
+            else:
+                return False
+        else:
+            return None
+
+
 # Checks if the machine on the host is running, starts it if not
-def do_checkrun(dps, machines = None):
+# Does not update dps.status
+def do_checkrun(dps, machines = None, wait = True):
     if not machines:
         machines = get_remote_running_machines()
     msg = None
@@ -168,32 +240,37 @@ def do_checkrun(dps, machines = None):
                 break
         if found_machine:
             # The machine is registered in the database and present on the host
-            if found_machine["status"] != "ACTIVE":
+            if found_machine["status"] != "ACTIVE" and found_machine["status"] != "BUILD":
                 # The machine is in an invalid state, restart it
                 do_remote_machine_delete(dps)
                 dps.guid = do_remote_machine_start(dps)
                 if dps.guid != None:
                     msg = "Restarted; new GUID: %s" % dps.guid
+                    if wait:
+                        wait_remote_machine_status(dps.guid, "ACTIVE")
                 else:
                     msg = "Error starting!"
             else:
-                dps.state = DeployedPackageService.STATE_RUNNING
                 msg = "Active"
         else:
             # The machine is registered in the database but not present on the host
             dps.guid = do_remote_machine_start(dps)
             if dps.guid != None:
                 msg = "Missing; new GUID: %s" % dps.guid
+                if wait:
+                    wait_remote_machine_status(dps.guid, "ACTIVE")
             else:
                 msg = "Error starting!"
     else:
         # Apparently, the machine was never started before. Start it now.
         dps.guid = do_remote_machine_start(dps)
         if dps.guid != None:
-            dps.state = DeployedPackageService.STATE_RUNNING
             msg = "Started; new GUID: %s" % dps.guid
+            if wait:
+                wait_remote_machine_status(dps.guid, "ACTIVE")
         else:
             msg = "Error starting!"
+
     dps.save()
     return msg
 
@@ -201,6 +278,10 @@ def do_checkrun(dps, machines = None):
 # Deleta a machine
 def do_remote_machine_delete(dps):
     remote_exec_nova("delete %s" % dps.guid)
+    try:
+        exec_knife("node delete -y %s" % dps.hostname)
+    except:
+        pass
 
 
 # Start a machine.
@@ -209,9 +290,10 @@ re_nova_boot = re.compile(r"([a-zA-Z].+?)\s+[|]\s+(.+?)\s+[|]")
 def do_remote_machine_start(dps):
     # 1) Create a cloud-init file
     cifn = os.tempnam("/tmp", "cinit")
-    cloud_init = unicode(dps.cloud_init).replace("$", r"\$")
     init_vars = build_dp_variables(dps.deployed_package)
     init_vars["node.hostname"] = dps.hostname
+    print "Starting", dps.hostname, "with", repr(init_vars)
+    cloud_init = unicode(dps.cloud_init).replace("$", r"\$")
     cloud_init = simple_template(cloud_init, init_vars)
     cmd = "cat <<EOF>%s\n%s\nEOF\n" % (cifn, cloud_init)
     remote_exec(cmd)
@@ -235,24 +317,77 @@ def do_remote_machine_start(dps):
     return dps.guid
 
 
+# Waits until the remote machine's status becomes whatever is given
+# in the second argument, or until the given number of seconds have passed.
+def wait_remote_machine_status(guid, status, seconds=10):
+    t_start = time.time()
+    while True:
+        machines = get_remote_running_machines()
+        found = None
+        for m in machines:
+            if m['guid'] == guid:
+                found = m
+                break
+        if found:
+            if m['status'] == status:
+                print "OOO: %s is %s" % (m['guid'], status)
+                return True
+            if time.time() - t_start < seconds:
+                time.sleep(0.5)
+            else:
+                return False
+        else:
+            return None
+
+
+# Checks if the machine name is registered in Chef
+def is_chef_machine_registered(name):
+    machines = exec_knife("node list").split("\n")
+    return name in machines
+
+
+# Waits until the machine with the given name appears in the output
+# of "knife node list".
+def wait_chef_machine(name, seconds=10):
+    t_start = time.time()
+    while True:
+        if is_chef_machine_registered(name):
+            print "CCC: %s is registered" % name
+            return True
+        else:
+            if time.time() - t_start < seconds:
+                time.sleep(0.5)
+            else:
+                return False
+
+
 # A simple template engine replacing "%{key}" substrings with values from
 # a dictionary.
 def simple_template(s, v):
     for k in v:
-        s = s.replace("%%{%s}" % k, v[k])
+        s = s.replace("%%{%s}" % k, str(v[k]))
     return s
 
 # Synces the network address information from the running machines list
 # with the database information. The database information is used in
 # build_dp_variables().
-def sync_dps_with_machines(dpackages, machines):
+def sync_dp_with_machines(dpackages, machines):
     for dp in dpackages:
         for dps in dp.deployedpackageservice_set.all():
             for m in machines:
                 if m["guid"] == dps.guid: # and (dps.address == None or dps.address == ""):
-                    dps.address = json.dumps(m["networks"])
-                    dps.save()
+                    sync_dps_with_machine(dps, m)
                     break
+
+
+def sync_dps_with_machine(dps, m):
+    assert dps.guid == m["guid"]
+    dps.address = json.dumps(m["networks"])
+    if m["status"] == "ACTIVE":
+        dps.status = DeployedPackageService.STATE_RUNNING
+    elif m["status"] == "ERROR":
+        dps.status = DeployedPackageService.STATE_CRASHED
+    dps.save()
 
 
 # Get a usefully structured list of running machines

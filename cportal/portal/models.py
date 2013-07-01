@@ -22,7 +22,7 @@ class Service(models.Model):
     max_instances = models.PositiveIntegerField(default = 1)
 
     def __unicode__(self):
-        return self.name
+        return "%s (%s) [%d-%d]" % (self.name, self.ident, self.min_instances, self.max_instances)
 
 class DeployedPackage(models.Model):
     package = models.ForeignKey(Package)
@@ -32,12 +32,14 @@ class DeployedPackage(models.Model):
         return "%s @ %s" % (self.package.name, self.ctime)
 
 class DeployedPackageService(models.Model):
-    STATE_NEW = 0
-    STATE_RUNNING = 1
-    STATE_CRASHED = 2
-    STATE_DISABLED = 3
+    STATE_NEW = 0           # IP address is still not available
+    STATE_STARTING = 1      # IP address is available, but it's not registered into Chef
+    STATE_RUNNING = 2       # a machine is running IFF openstack node is ACTIVE and the machine is registered into Chef
+    STATE_CRASHED = 3
+    STATE_DISABLED = 4
     STATE_CHOICES = (
         (STATE_NEW,      "New"),
+        (STATE_STARTING, "Starting"),
         (STATE_RUNNING,  "Running"),
         (STATE_CRASHED,  "Crashed / unknown"),
         (STATE_DISABLED, "Disabled")
