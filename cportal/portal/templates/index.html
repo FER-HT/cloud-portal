@@ -21,8 +21,8 @@
 <table border="0">
 	{% for dp in deployed_packages %}
 	<tr>
-		<td>
-			<div title="Deployed on: {{ dp.ctime }}">❖ {{ dp.package.name }}<br></div>
+		<td class="service_cp">
+			<div title="Deployed on: {{ dp.ctime }}">❖ {{ dp.package.name }} ❖</div>
 			<div style="text-align: center">
 			<button type="submit" name="dp_id" value="{{ dp.pk }}">Check and run</button>
 			<button type="submit" name="rp_id" value="{{ dp.pk }}">Remove / delete</button>
